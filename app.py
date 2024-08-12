@@ -285,7 +285,6 @@ def main():
         st.session_state.vector_store = vector_store  # Store in session state
 
     # Query Section
-    st.subheader("Ask a Question")
     user_question = st.text_input("Ask a Question")
 
     if user_question:
