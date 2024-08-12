@@ -1,2 +1,0 @@
-# ChatPDF
- Chat with pdf
