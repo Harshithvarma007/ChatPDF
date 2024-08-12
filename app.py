@@ -5,17 +5,13 @@ import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain.vectorstores import FAISS
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Configure Google Gemini API key from Streamlit secrets
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# Configure Google Gemini API key
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-
-# Retrieve login credentials from .env
-VALID_USERNAME = os.getenv("USER_NAME")
-VALID_PASSWORD = os.getenv("PASSWORD")
+# Retrieve login credentials from Streamlit secrets
+VALID_USERNAME = st.secrets["USER_NAME"]
+VALID_PASSWORD = st.secrets["PASSWORD"]
 
 def get_pdf_text(pdf_docs):
     """Extracts text from a list of PDF documents."""
@@ -88,7 +84,7 @@ def main():
         if username == VALID_USERNAME and password == VALID_PASSWORD:
             st.success("Login successful!")
             
-            st.header("Chat with PDF")
+            st.header("Chat with PDF using Gemini💁")
             user_question = st.text_input("Ask a Question from the PDF Files")
 
             if user_question:
