@@ -1,25 +1,28 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import os
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 import google.generativeai as genai
 from langchain.vectorstores import FAISS
+import os
 
-# Configure Google Gemini API key from Streamlit secrets
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# Configure Google Gemini API key from environment variables
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # Retrieve login credentials from Streamlit secrets
 VALID_USERNAME = st.secrets["USER_NAME"]
 VALID_PASSWORD = st.secrets["PASSWORD"]
 
-def get_pdf_text(pdf_docs):
-    """Extracts text from a list of PDF documents."""
+def get_pdf_text(pdf_path):
+    """Extracts text from a PDF document."""
     text = ""
-    for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
+    pdf_reader = PdfReader(pdf_path)
+    for page in pdf_reader.pages:
+        text += page.extract_text()
     return text
 
 def get_text_chunks(text):
@@ -30,7 +33,10 @@ def get_text_chunks(text):
 
 def get_vector_store(text_chunks):
     """Creates a vector store from text chunks and saves it locally."""
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001", 
+        google_api_key=os.getenv("GEMINI_API_KEY")
+    )
     vector_store = FAISS.from_texts(text_chunks, embeddings)
     vector_store.save_local("faiss_index")
 
@@ -59,7 +65,7 @@ def generate_response(context, question):
 
 def user_input(user_question):
     """Handles user input and generates a response based on the vector store."""
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.getenv("GEMINI_API_KEY"))
     new_db = FAISS.load_local("faiss_index", embeddings)
     docs = new_db.similarity_search(user_question)
     
@@ -69,38 +75,66 @@ def user_input(user_question):
     # Generate response using the custom function
     response = generate_response(context, user_question)
     
-    st.write("Reply:", response)
+    return response
 
 def main():
     """Main function to run the Streamlit app."""
-    st.set_page_config(page_title="Chat PDF")
-    
-    # Login Section
-    st.header("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    
-    if st.button("Login"):
-        if username == VALID_USERNAME and password == VALID_PASSWORD:
-            st.success("Login successful!")
-            
-            st.header("Chat with PDF using Gemini💁")
-            user_question = st.text_input("Ask a Question from the PDF Files")
+    st.set_page_config(page_title="Chat PDF", layout="wide")
 
-            if user_question:
-                user_input(user_question)
+    # Use session state to manage login status and selected page
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    if 'image_index' not in st.session_state:
+        st.session_state.image_index = 0
 
-            with st.sidebar:
-                st.title("Menu:")
-                pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Submit & Process Button", accept_multiple_files=True)
-                if st.button("Submit & Process"):
-                    with st.spinner("Processing..."):
-                        raw_text = get_pdf_text(pdf_docs)
-                        text_chunks = get_text_chunks(raw_text)
-                        get_vector_store(text_chunks)
-                        st.success("Done")
-        else:
-            st.error("Invalid username or password")
+    if not st.session_state.logged_in:
+        st.header("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+
+        if st.button("Login"):
+            if username == VALID_USERNAME and password == VALID_PASSWORD:
+                st.session_state.logged_in = True
+                st.session_state.image_index = 0  # Initialize image index
+                st.success("Login successful!")
+                st.experimental_rerun()  # Refresh to show the main page
+            else:
+                st.error("Invalid username or password")
+        return  # Exit early to not show the main app while not logged in
+
+    # Main Page Content
+    st.header("ChatPDF")
+
+    # Query Section
+    st.write("### Ask a Question")
+    user_question = st.text_input("Ask a Question")
+
+    if user_question:
+        # Get response using the user_input function
+        response = user_input(user_question)
+        st.write("## Reply:")
+        st.write(response)
+
+    # Display images with circular navigation
+    images = ["image1.png", "image2.png"]
+    image_index = st.session_state.image_index
+
+    # Display text above the image
+    st.write(f"### Image {image_index + 1} of {len(images)}")
+
+    # Display image with smaller size
+    st.image(images[image_index], width=400)  # Adjust width as needed
+
+    # Navigation buttons for images
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Previous"):
+            st.session_state.image_index = (image_index - 1) % len(images)
+            st.experimental_rerun()  # Refresh to show the previous image
+    with col2:
+        if st.button("Next"):
+            st.session_state.image_index = (image_index + 1) % len(images)
+            st.experimental_rerun()  # Refresh to show the next image
 
 if __name__ == "__main__":
     main()
