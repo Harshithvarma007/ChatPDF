@@ -79,6 +79,7 @@ def user_input(user_question):
         return "Error: Unable to load the vector store."
 
     try:
+        # Perform similarity search
         docs = new_db.similarity_search(user_question)
     except Exception as e:
         st.error(f"Failed to perform similarity search: {e}")
@@ -95,7 +96,6 @@ def user_input(user_question):
         return "Error: Unable to generate a response."
 
     return response
-
 def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Chat PDF", layout="wide")
