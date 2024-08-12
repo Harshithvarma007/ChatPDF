@@ -31,14 +31,14 @@ def get_text_chunks(text):
     chunks = text_splitter.split_text(text)
     return chunks
 
-def get_vector_store(text_chunks):
-    """Creates a vector store from text chunks and saves it locally."""
+def create_vector_store(text_chunks):
+    """Creates a new vector store from text chunks for the session."""
     embeddings = GoogleGenerativeAIEmbeddings(
         model="models/embedding-001", 
         google_api_key=os.getenv("GEMINI_API_KEY")
     )
     vector_store = FAISS.from_texts(text_chunks, embeddings)
-    vector_store.save_local("faiss_index")
+    return vector_store
 
 def generate_response(context, question):
     """Generates a response to a question based on the provided context."""
@@ -70,17 +70,25 @@ def user_input(user_question):
         model="models/embedding-001", 
         google_api_key=google_api_key
     )
-    
-    try:
-        # Attempt to load the vector store
-        new_db = FAISS.load_local("faiss_index", embeddings)
-    except Exception as e:
-        st.error(f"Failed to load vector store: {e}")
-        return "Error: Unable to load the vector store."
+
+    # Create a new vector store for each session
+    if 'vector_store' not in st.session_state:
+        st.session_state.vector_store = None
+
+    if st.session_state.vector_store is None:
+        # Assume PDF file is uploaded via Streamlit file uploader
+        pdf_file = st.file_uploader("Upload a PDF file", type="pdf")
+        if pdf_file is not None:
+            pdf_text = get_pdf_text(pdf_file)
+            text_chunks = get_text_chunks(pdf_text)
+            st.session_state.vector_store = create_vector_store(text_chunks)
+            st.success("Vector store created successfully!")
+        else:
+            return "Please upload a PDF file to create the vector store."
 
     try:
         # Perform similarity search
-        docs = new_db.similarity_search(user_question)
+        docs = st.session_state.vector_store.similarity_search(user_question)
     except Exception as e:
         st.error(f"Failed to perform similarity search: {e}")
         return "Error: Unable to perform the similarity search."
@@ -96,6 +104,7 @@ def user_input(user_question):
         return "Error: Unable to generate a response."
 
     return response
+
 def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Chat PDF", layout="wide")
