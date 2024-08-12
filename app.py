@@ -70,15 +70,30 @@ def user_input(user_question):
         model="models/embedding-001", 
         google_api_key=google_api_key
     )
-    new_db = FAISS.load_local("faiss_index", embeddings)
-    docs = new_db.similarity_search(user_question)
     
+    try:
+        # Attempt to load the vector store
+        new_db = FAISS.load_local("faiss_index", embeddings)
+    except Exception as e:
+        st.error(f"Failed to load vector store: {e}")
+        return "Error: Unable to load the vector store."
+
+    try:
+        docs = new_db.similarity_search(user_question)
+    except Exception as e:
+        st.error(f"Failed to perform similarity search: {e}")
+        return "Error: Unable to perform the similarity search."
+
     # Extracting text from the retrieved documents
     context = "\n".join([doc.page_content for doc in docs])
-    
-    # Generate response using the custom function
-    response = generate_response(context, user_question)
-    
+
+    try:
+        # Generate response using the custom function
+        response = generate_response(context, user_question)
+    except Exception as e:
+        st.error(f"Failed to generate response: {e}")
+        return "Error: Unable to generate a response."
+
     return response
 
 def main():
