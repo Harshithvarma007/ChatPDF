@@ -65,7 +65,11 @@ def generate_response(context, question):
 
 def user_input(user_question):
     """Handles user input and generates a response based on the vector store."""
-    embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001",google_api_key=os.getenv("GEMINI_API_KEY"))
+    google_api_key = os.getenv("GEMINI_API_KEY")  # Ensure this environment variable is correctly set
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model="models/embedding-001", 
+        google_api_key=google_api_key
+    )
     new_db = FAISS.load_local("faiss_index", embeddings)
     docs = new_db.similarity_search(user_question)
     
@@ -81,60 +85,65 @@ def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Chat PDF", layout="wide")
 
-    # Use session state to manage login status and selected page
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-    if 'image_index' not in st.session_state:
-        st.session_state.image_index = 0
+    # Create a two-column layout
+    col1, col2 = st.columns([1, 3])
 
-    if not st.session_state.logged_in:
-        st.header("Login")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-
-        if st.button("Login"):
-            if username == VALID_USERNAME and password == VALID_PASSWORD:
-                st.session_state.logged_in = True
-                st.session_state.image_index = 0  # Initialize image index
-                st.success("Login successful!")
-                st.experimental_rerun()  # Refresh to show the main page
-            else:
-                st.error("Invalid username or password")
-        return  # Exit early to not show the main app while not logged in
-
-    # Main Page Content
-    st.header("ChatPDF")
-
-    # Query Section
-    st.write("### Ask a Question")
-    user_question = st.text_input("Ask a Question")
-
-    if user_question:
-        # Get response using the user_input function
-        response = user_input(user_question)
-        st.write("## Reply:")
-        st.write(response)
-
-    # Display images with circular navigation
-    images = ["image1.png", "image2.png"]
-    image_index = st.session_state.image_index
-
-    # Display text above the image
-    st.write(f"### Image {image_index + 1} of {len(images)}")
-
-    # Display image with smaller size
-    st.image(images[image_index], width=400)  # Adjust width as needed
-
-    # Navigation buttons for images
-    col1, col2 = st.columns(2)
+    # Login Column
     with col1:
-        if st.button("Previous"):
-            st.session_state.image_index = (image_index - 1) % len(images)
-            st.experimental_rerun()  # Refresh to show the previous image
+        if 'logged_in' not in st.session_state:
+            st.session_state.logged_in = False
+        if not st.session_state.logged_in:
+            st.header("Login")
+            username = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+
+            if st.button("Login"):
+                if username == VALID_USERNAME and password == VALID_PASSWORD:
+                    st.session_state.logged_in = True
+                    st.session_state.image_index = 0  # Initialize image index
+                    st.success("Login successful!")
+                else:
+                    st.error("Invalid username or password")
+            return  # Exit early to not show the main app while not logged in
+
+    # Main Content Column
     with col2:
-        if st.button("Next"):
-            st.session_state.image_index = (image_index + 1) % len(images)
-            st.experimental_rerun()  # Refresh to show the next image
+        if 'image_index' not in st.session_state:
+            st.session_state.image_index = 0
+
+        # Main Page Content
+        st.header("ChatPDF")
+
+        # Query Section
+        st.write("### Ask a Question")
+        user_question = st.text_input("Ask a Question")
+
+        if user_question:
+            # Get response using the user_input function
+            response = user_input(user_question)
+            st.write("## Reply:")
+            st.write(response)
+
+        # Display images with circular navigation
+        images = ["image1.png", "image2.png"]
+        image_index = st.session_state.image_index
+
+        # Display text above the image
+        st.write(f"### Image {image_index + 1} of {len(images)}")
+
+        # Display image with smaller size
+        st.image(images[image_index], width=400)  # Adjust width as needed
+
+        # Navigation buttons for images
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Previous"):
+                st.session_state.image_index = (image_index - 1) % len(images)
+                # No need to rerun
+        with col2:
+            if st.button("Next"):
+                st.session_state.image_index = (image_index + 1) % len(images)
+                # No need to rerun
 
 if __name__ == "__main__":
     main()
