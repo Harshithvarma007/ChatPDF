@@ -255,76 +255,47 @@ def main():
     """Main function to run the Streamlit app."""
     st.set_page_config(page_title="Chat PDF", layout="wide")
 
-    # Create a two-column layout
-    col1, col2 = st.columns([1, 3])
+    # Single Column Layout
+    st.header("Chat PDF")
 
-    # Login Column
-    with col1:
-        if 'logged_in' not in st.session_state:
-            st.session_state.logged_in = False
-        if not st.session_state.logged_in:
-            st.header("Login")
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
 
-            if st.button("Login"):
-                if username == VALID_USERNAME and password == VALID_PASSWORD:
-                    st.session_state.logged_in = True
-                    st.session_state.image_index = 0  # Initialize image index
-                    st.success("Login successful!")
-                else:
-                    st.error("Invalid username or password")
-            return  # Exit early to not show the main app while not logged in
+    if not st.session_state.logged_in:
+        st.subheader("Login")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
 
-    # Main Content Column
-    with col2:
-        if 'image_index' not in st.session_state:
-            st.session_state.image_index = 0
-
-        st.header("ChatPDF")
-
-        # PDF Upload Section
-        pdf_file = st.file_uploader("Upload PDF", type="pdf")
-        if pdf_file:
-            # Extract text from the PDF and create an in-memory vector store
-            pdf_text = get_pdf_text(pdf_file)
-            text_chunks = get_text_chunks(pdf_text)
-            vector_store = create_vector_store(text_chunks)
-            st.session_state.vector_store = vector_store  # Store in session state
-
-        # Query Section
-        st.write("### Ask a Question")
-        user_question = st.text_input("Ask a Question")
-
-        if user_question:
-            if 'vector_store' in st.session_state:
-                vector_store = st.session_state.vector_store
-                response = user_input(user_question, vector_store)
-                st.write("## Reply:")
-                st.write(response)
+        if st.button("Login"):
+            if username == VALID_USERNAME and password == VALID_PASSWORD:
+                st.session_state.logged_in = True
+                st.session_state.image_index = 0  # Initialize image index
+                st.success("Login successful!")
             else:
-                st.write("Please upload a PDF to begin.")
+                st.error("Invalid username or password")
+        return  # Exit early to not show the main app while not logged in
 
-        # # Display images with circular navigation
-        # images = ["image1.png", "image2.png"]
-        # image_index = st.session_state.image_index
+    # PDF Upload Section
+    pdf_file = st.file_uploader("Upload PDF", type="pdf")
+    if pdf_file:
+        # Extract text from the PDF and create an in-memory vector store
+        pdf_text = get_pdf_text(pdf_file)
+        text_chunks = get_text_chunks(pdf_text)
+        vector_store = create_vector_store(text_chunks)
+        st.session_state.vector_store = vector_store  # Store in session state
 
-        # # Display text above the image
-        # st.write(f"### Image {image_index + 1} of {len(images)}")
+    # Query Section
+    st.subheader("Ask a Question")
+    user_question = st.text_input("Ask a Question")
 
-        # # Display image with smaller size
-        # st.image(images[image_index], width=400)  # Adjust width as needed
-
-        # # Navigation buttons for images
-        # col1, col2 = st.columns(2)
-        # with col1:
-        #     if st.button("Previous"):
-        #         st.session_state.image_index = (image_index - 1) % len(images)
-        #         # No need to rerun
-        # with col2:
-        #     if st.button("Next"):
-        #         st.session_state.image_index = (image_index + 1) % len(images)
-        #         # No need to rerun
+    if user_question:
+        if 'vector_store' in st.session_state:
+            vector_store = st.session_state.vector_store
+            response = user_input(user_question, vector_store)
+            st.write("## Reply:")
+            st.write(response)
+        else:
+            st.write("Please upload a PDF to begin.")
 
 if __name__ == "__main__":
     main()
